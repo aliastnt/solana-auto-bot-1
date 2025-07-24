@@ -1,3 +1,5 @@
-requests
+solders>=0.26.0
+solana>=0.36.0
 python-telegram-bot==13.15
-solana
+requests
+apscheduler
