@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from telegram import Bot
 from solana.rpc.api import Client
-from solana.keypair import Keypair
+from solders.keypair import Keypair  # dùng solders thay vì solana.keypair
 
 # === Environment variables ===
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -19,8 +19,8 @@ RUGCHECK_URL = "https://api.rugcheck.xyz/v1/tokens/"
 
 bot = Bot(token=TELEGRAM_TOKEN)
 solana_client = Client(RPC_URL)
-keypair = Keypair.from_secret_key(bytes(PRIVATE_KEY))
-wallet_pubkey = keypair.public_key
+keypair = Keypair.from_bytes(bytes(PRIVATE_KEY))
+wallet_pubkey = keypair.pubkey()
 
 TOTAL_BALANCE = 10.0
 TRADE_RISK = 0.02
