@@ -70,7 +70,7 @@ def open_trade(token):
         "highest": price,
         "start_time": datetime.utcnow()
     }
-    bot.send_message(chat_id="@your_channel_or_userid",
+    bot.send_message(chat_id="1732066940",
                      text=f"Mở lệnh: {token['baseToken']['symbol']} @ {price:.6f}\nVốn: {TRADE_SIZE} USD")
 
 def close_trade(token_address, price, reason):
@@ -78,7 +78,7 @@ def close_trade(token_address, price, reason):
     if not trade: return
     entry = trade["entry"]
     pnl = (price - entry) / entry * 100
-    bot.send_message(chat_id="@your_channel_or_userid",
+    bot.send_message(chat_id="1732066940",
                      text=f"Đóng lệnh: {token_address}\nGiá đóng: {price:.6f}\nP/L: {pnl:.2f}%\nLý do: {reason}")
 
 def get_token_price(token_address):
@@ -120,7 +120,7 @@ def update_trades():
         close_trade(*t)
 
 def run_bot():
-    bot.send_message(chat_id="@your_channel_or_userid", text="BOT Solana AutoTrade khởi động!")
+    bot.send_message(chat_id="1732066940", text="BOT Solana AutoTrade khởi động!")
     while True:
         if len(trades) < MAX_TRADES:
             token = get_top_token()
