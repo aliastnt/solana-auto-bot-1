@@ -1,21 +1,4 @@
-import os
-import base58
-import logging
-from solders.keypair import Keypair
-from solders.pubkey import Pubkey
-from solana.rpc.api import Client
-from solana.rpc.types import TxOpts
-from solana.transaction import Transaction
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
-# --- Logging setup ---
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# --- Environment Variables ---
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = int(os.getenv("CHAT_ID", "0"))
+import 
 PRIVATE_KEY_B58 = os.getenv("PRIVATE_KEY")
 
 # --- Solana setup ---
