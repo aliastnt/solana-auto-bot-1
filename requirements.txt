@@ -1,4 +1,2 @@
+python-telegram-bot>=20.0
 solana
-solders
-python-telegram-bot
-base58
