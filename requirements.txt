@@ -1,6 +1,0 @@
-solana
-base58
-requests
-python-telegram-bot==13.15
-apscheduler
-websockets
