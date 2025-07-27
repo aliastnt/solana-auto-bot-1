@@ -1,79 +1,95 @@
 import os
 import logging
+import base58
+from solana.rpc.api import Client
+from solana.keypair import Keypair
+from solana.transaction import Transaction
+from solders.system_program import transfer, TransferParams
+from solders.pubkey import Pubkey
+from solders.signature import Signature
+from solders.rpc.responses import SendTransactionResp
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from apscheduler.schedulers.background import BackgroundScheduler
-from solders.keypair import Keypair
-from solders.pubkey import Pubkey
-from solders.transaction import Transaction
-from solana.rpc.api import Client
-from solana.rpc.types import TxOpts
-from solana.system_program import TransferParams, transfer
-import base58
 
-# -------------------- Logging --------------------
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# -------------------- Environment --------------------
+# --- ENV Variables ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")  # base58 encoded
 SOLANA_ENDPOINT = os.getenv("SOLANA_ENDPOINT", "https://api.mainnet-beta.solana.com")
 
-# -------------------- Solana --------------------
+# --- Solana Client ---
 client = Client(SOLANA_ENDPOINT)
 
+# --- Load Keypair ---
 def load_keypair():
-    try:
-        secret = base58.b58decode(PRIVATE_KEY)
-        return Keypair.from_bytes(secret)
-    except Exception as e:
-        logger.error(f"Error loading keypair: {e}")
-        raise
+    secret = base58.b58decode(PRIVATE_KEY)
+    return Keypair.from_secret_key(secret)
 
-def send_sol_transaction(destination: str, amount_sol: float):
-    try:
-        sender = load_keypair()
-        recipient = Pubkey.from_string(destination)
-        lamports = int(amount_sol * 1_000_000_000)
-        tx = Transaction().add(
-            transfer(TransferParams(from_pubkey=sender.pubkey(), to_pubkey=recipient, lamports=lamports))
-        )
-        response = client.send_transaction(tx, sender, opts=TxOpts(skip_preflight=True))
-        return response
-    except Exception as e:
-        logger.error(f"Transaction failed: {e}")
-        return {"error": str(e)}
+keypair = load_keypair()
 
-# -------------------- Telegram --------------------
+# --- Check Balance ---
+def check_balance():
+    balance = client.get_balance(keypair.pubkey())
+    lamports = balance['result']['value']
+    sol = lamports / 1e9
+    return sol
+
+# --- Transfer SOL ---
+def send_sol(destination, amount_sol):
+    lamports = int(amount_sol * 1e9)
+    dest_pubkey = Pubkey.from_string(destination)
+
+    params = TransferParams(
+        from_pubkey=keypair.pubkey(),
+        to_pubkey=dest_pubkey,
+        lamports=lamports
+    )
+    ix = transfer(params)
+    tx = Transaction().add(ix)
+    tx.sign(keypair)
+    response = client.send_transaction(tx)
+    return response
+
+# --- Telegram Commands ---
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text('BOT Solana AutoTrade đã khởi động!')
+    update.message.reply_text("BOT Solana AutoTrade (Full Auto) đã khởi động!")
 
-def open_trade(update: Update, context: CallbackContext):
-    update.message.reply_text('Đang gửi lệnh thử (0.01 SOL)...')
-    resp = send_sol_transaction("ENTER_DESTINATION_ADDRESS", 0.01)
-    if "error" in resp:
-        update.message.reply_text(f"Lỗi giao dịch: {resp['error']}")
-    else:
-        update.message.reply_text(f"Giao dịch thành công! TxSig: {resp['result']}")
+def balance(update: Update, context: CallbackContext):
+    sol = check_balance()
+    update.message.reply_text(f"Số dư: {sol:.4f} SOL")
 
-# -------------------- Scheduler --------------------
-def check_trailing():
-    logger.info("Running trailing check job...")
+def send(update: Update, context: CallbackContext):
+    try:
+        destination = context.args[0]
+        amount = float(context.args[1])
+        response = send_sol(destination, amount)
+        update.message.reply_text(f"Gửi thành công: {response}")
+    except Exception as e:
+        update.message.reply_text(f"Lỗi: {str(e)}")
 
+# --- Scheduler ---
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_trailing, 'interval', seconds=30)
+
+def scheduled_task():
+    logger.info(f"[Scheduler] Balance: {check_balance()} SOL")
+
+scheduler.add_job(scheduled_task, 'interval', seconds=30)
 scheduler.start()
 
-# -------------------- Main --------------------
+# --- Main ---
 def main():
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("open", open_trade))
+    dp.add_handler(CommandHandler("balance", balance))
+    dp.add_handler(CommandHandler("send", send))
     updater.start_polling()
     updater.idle()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
